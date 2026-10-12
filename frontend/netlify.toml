@@ -1,0 +1,37 @@
+# Fork-only: Netlify serves the frontend, the API runs on Railway. Mirrors web/nginx.conf.template.
+[build]
+  command = "npm run build && node ../scripts/catalogue/stage-media.mjs dist"
+  publish = "dist"
+  # Skip the build (Netlify credits) when a push touches nothing the site is built from.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ../catalogue ../scripts/catalogue ../api/coach/core"
+
+# Same origin for passkeys: /api is proxied, never redirected.
+[[redirects]]
+  from = "/api/*"
+  to = "https://api-production-38f49.up.railway.app/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "same-origin"
+    Content-Security-Policy = "frame-ancestors 'none'"
+
+[[headers]]
+  for = "/exercise-media/*"
+  [headers.values]
+    Cross-Origin-Resource-Policy = "same-origin"
+    Cache-Control = "public, max-age=2592000, immutable"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000, immutable"
