@@ -1,0 +1,50 @@
+# Fork-only: merge DuarteSantos8/openGym main into this fork once a week.
+# Weekly, not daily: every push to main is a Netlify deploy (credits).
+# A conflict pushes nothing and opens an issue; a human adds agent:todo so Aiur resolves it
+# (Aiur only dispatches labels applied by an allowed user, not by this bot).
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    if: github.repository == 'its-everdred/openGym'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # PAT with `workflow` scope: GITHUB_TOKEN cannot push upstream's .github/workflows changes.
+          token: ${{ secrets.SYNC_TOKEN }}
+      - name: Merge upstream main
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          git config user.name "Apple Kid"
+          git config user.email "its.applekid@gmail.com"
+          git fetch https://github.com/DuarteSantos8/openGym.git main
+          upstream=$(git rev-parse FETCH_HEAD)
+          if git merge-base --is-ancestor "$upstream" HEAD; then
+            echo "Already up to date with upstream $upstream"
+            exit 0
+          fi
+          if git merge --no-edit -m "Merge upstream DuarteSantos8/openGym@${upstream:0:8}" "$upstream"; then
+            git push origin HEAD:main
+            exit 0
+          fi
+          conflicts=$(git diff --name-only --diff-filter=U)
+          git merge --abort
+          title="Merge upstream: conflicts to resolve"
+          if [ -n "$(gh issue list --state open --search "\"$title\" in:title" --json number -q '.[].number')" ]; then
+            echo "Conflict issue already open; not filing another."
+            exit 1
+          fi
+          body=$(printf 'The weekly upstream sync could not merge `DuarteSantos8/openGym@%s` into `main` cleanly. Nothing was pushed.\n\nConflicting files:\n%s\n\nTo resolve: merge `https://github.com/DuarteSantos8/openGym.git` `main` into this fork'"'"'s `main`, keeping the fork-only changes (`frontend/netlify.toml`, `.github/CODEOWNERS`, `.github/workflows/sync-upstream.yml`, the removed `VOLUME` line in `api/Dockerfile`, and any Apple Health work), run the frontend and api tests, and open a PR.\n\nAdd `agent:todo` to hand this to Aiur.' "${upstream:0:8}" "$(printf '%s\n' "$conflicts" | sed 's/^/- `/; s/$/`/')")
+          gh issue create --title "$title" --body "$body"
+          exit 1
