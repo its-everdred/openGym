@@ -1924,6 +1924,7 @@ export default {
   'Workout settings': 'वर्कआउट सेटिंग',
   'Default ({0})': 'डिफ़ॉल्ट ({0})',
   'Rest for this exercise': 'इस एक्सरसाइज़ का आराम',
+  'Add duration': 'अवधि जोड़ें',
   'Add to this set': 'इस सेट में जोड़ें',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': 'इस एक्सरसाइज़ के वार्म-अप सेट, और इसकी एक्सरसाइज़ सेटिंग से आराम और नोट को रूटीन में कॉपी करें। आज के लिए जोड़ा गया नोट इसी वर्कआउट के साथ रहता है। आपका वर्कआउट इतिहास सुरक्षित रहता है।',
   'Discard workout': 'वर्कआउट छोड़ें',

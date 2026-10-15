@@ -1924,6 +1924,7 @@ export default {
   'Workout settings': '운동 중 설정',
   'Default ({0})': '기본값 ({0})',
   'Rest for this exercise': '이 운동의 휴식',
+  'Add duration': '시간 추가',
   'Add to this set': '이 세트에 추가',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': '이 운동의 워밍업 세트와 운동 설정의 휴식, 메모를 루틴에 복사합니다. 오늘을 위해 추가한 메모는 이 운동 기록에 남습니다. 운동 기록은 그대로 유지됩니다.',
   'Discard workout': '운동 버리기',

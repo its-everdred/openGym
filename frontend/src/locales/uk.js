@@ -1918,6 +1918,7 @@ export default {
   'Workout settings': 'Налаштування тренування',
   'Default ({0})': 'Типово ({0})',
   'Rest for this exercise': 'Відпочинок для цієї вправи',
+  'Add duration': 'Додати тривалість',
   'Add to this set': 'Додати до цього підходу',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': 'Копіює до програми розминкові підходи цієї вправи, а також відпочинок і нотатку з її налаштувань вправи. Нотатка на сьогодні залишається з цим тренуванням. Історія тренувань зберігається.',
   'Discard workout': 'Скасувати тренування',

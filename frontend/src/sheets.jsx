@@ -21,7 +21,7 @@ import LineChart from './components/LineChart.jsx'
 import Stepper from './components/Stepper.jsx'
 import { durationSheet } from './components/DurationWheel.jsx'
 import { SG_NAME_MAX } from './lib/superset-meta.js'
-import { REST_MAX, fmtRest } from './lib/duration.js'
+import { REST_MAX, fmtRest, fmtDuration } from './lib/duration.js'
 import Icon from './components/Icon.jsx'
 import { Button, Slider, Switch, Segmented, SelectRow, Row, TextField, NumberField, MultiSelectRow } from './components/ui.jsx'
 import { glyphOf, GLYPH_GROUPS, DEFAULT_GLYPH } from './lib/glyphs.js'
@@ -2474,7 +2474,8 @@ function WorkoutDetail({ w, close }) {
     return <div key={i} className="row wd-ex" style={{ alignItems: 'flex-start' }} {...tappable(() => exerciseHistorySheet(e.id))}>
       {ex && <Thumb ex={ex} />}
       <div className="grow"><div className={`tt ${exerciseNameClass(ex)}`} style={{ fontWeight: 600 }}>{nameOf(e)} {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
-        <div className="ss">{e.sets.filter(hasCompletedWork).map(s => setLabel(e.id, s, e.target, speedUnitOf(st))).join('  ·  ') || t('no sets')}</div>
+        <div className="ss">{e.sets.filter(hasCompletedWork).map(s => setLabel(e.id, s, e.target, speedUnitOf(st))).join('  ·  ') || t('no sets')}
+          {e.durSec > 0 && <span className="dim">{'  ·  '}<Icon name="timer" style={{ fontSize: 12, verticalAlign: '-1px', marginInlineEnd: 3 }} />{fmtDuration(e.durSec)}</span>}</div>
         {e.note && <div className="small dim" style={{ marginTop: 3 }}>
           {e.notePin && <Icon name="pin" style={{ fontSize: 12, marginInlineEnd: 4, verticalAlign: '-1px', color: 'var(--yellow)' }} />}{e.note}
         </div>}</div>

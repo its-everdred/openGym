@@ -1924,6 +1924,7 @@ export default {
   'Workout settings': 'Réglages de la séance',
   'Default ({0})': 'Par défaut ({0})',
   'Rest for this exercise': 'Repos pour cet exercice',
+  'Add duration': 'Ajouter une durée',
   'Add to this set': 'Ajouter à cette série',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': 'Copie dans la routine les séries d’échauffement de cet exercice, ainsi que le repos et la note de ses Réglages de l’exercice. Une note ajoutée pour aujourd’hui reste avec cette séance. Ton historique d’entraînement est conservé.',
   'Discard workout': 'Abandonner la séance',

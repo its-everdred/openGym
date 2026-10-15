@@ -1924,6 +1924,7 @@ export default {
   'Workout settings': '训练设置',
   'Default ({0})': '默认（{0}）',
   'Rest for this exercise': '本动作的休息',
+  'Add duration': '添加时长',
   'Add to this set': '添加到这一组',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': '将该动作的热身组，以及其动作设置中的休息时间和备注，复制到训练日中。为今天添加的备注会留在本次训练中。训练历史会保留。',
   'Discard workout': '放弃训练',

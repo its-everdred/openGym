@@ -218,6 +218,12 @@ describe('session notes', () => {
     expect('notePin' in w.entries[0]).toBe(false)
   })
 
+  it('keeps an exercise duration set by hand, and writes none when unset', () => {
+    expect(buildCompletedWorkout(active({ durSec: 510 })).entries[0].durSec).toBe(510)
+    expect('durSec' in buildCompletedWorkout(active({})).entries[0]).toBe(false)
+    expect('durSec' in buildCompletedWorkout(active({ durSec: 0 })).entries[0]).toBe(false)
+  })
+
   it('writes no note fields at all when nothing was typed', () => {
     const w = buildCompletedWorkout(active({ note: '   ', notePin: true }))
     expect('note' in w.entries[0]).toBe(false)

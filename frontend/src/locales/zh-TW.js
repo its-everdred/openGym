@@ -1914,6 +1914,7 @@ export default {
   'Workout settings': '訓練設定',
   'Default ({0})': '預設（{0}）',
   'Rest for this exercise': '此動作的組間休息',
+  'Add duration': '新增時長',
   'Add to this set': '加到這一組',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': '將此動作的熱身組，以及其動作設定中的休息時間與備忘錄，複製到課表中。為今天新增的備忘錄會留在這次訓練中。你的訓練紀錄會保留。',
   'Discard workout': '捨棄本次訓練',
