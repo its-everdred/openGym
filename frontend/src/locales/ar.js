@@ -1976,6 +1976,7 @@ export default {
   'Workout settings': 'إعدادات التمرين الحالي',
   'Default ({0})': 'الافتراضي ({0})',
   'Rest for this exercise': 'الراحة لهذا التمرين',
+  'Add duration': 'إضافة المدة',
   'Add to this set': 'أضف إلى هذه المجموعة',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': 'انسخ مجموعات الإحماء لهذا التمرين، والراحة والملاحظة من إعدادات التمرين الخاصة به، إلى الروتين. تبقى الملاحظة التي أضفتها لهذا اليوم مع هذا التمرين. يبقى سجل تمارينك كما هو.',
   'Discard workout': 'تجاهل التمرين',

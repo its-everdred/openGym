@@ -25,7 +25,7 @@ import { supersetMeta } from '../lib/superset-meta.js'
 import WorkoutThumb, { hasWorkoutMedia } from '../components/WorkoutThumb.jsx'
 import { workoutSettingsSheet } from '../components/WorkoutSettingsSheet.jsx'
 import { durationSheet } from '../components/DurationWheel.jsx'
-import { REST_MAX, fmtRest } from '../lib/duration.js'
+import { REST_MAX, fmtRest, fmtDuration } from '../lib/duration.js'
 import { startFlow, exercisePicker, exConfigSheet, exerciseDetailSheet, finishWorkout, exitWorkoutEdit, workoutCompleteSheet, confirmSheet, exerciseNoteSheet, sessionNoteSheet, renameWorkoutSheet, swapActiveWorkoutExercise, barWeightSheet, menuSheet, effortPickerSheet, exerciseHistorySheet, addRoutineToSessionSheet, finishWorkoutSheet } from '../sheets.jsx'
 import { afterScrollRestore, scrollRestorePending } from '../components/Modals.jsx'
 import { effortColor } from '../lib/effort.js'
@@ -102,8 +102,10 @@ const RTL_LETTER = /[֐-ࣿיִ-﷿ﹰ-﻿]/
 // The pause between the left and the right side of one timed per-side set (owner's call): long
 // enough to turn over, far shorter than the rest the set earns once both sides are held.
 const SWITCH_SIDES_SEC = 10
+// An exercise's own duration (the Duration button by Add set) tops out at 90 minutes.
+const DURATION_MAX = 90 * 60
 
-function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSide, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onCopySetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onRest, onNoProg, routineUpdate, onSwap, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onRemoveExercise, busy }) {
+function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSide, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onCopySetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onRest, onDuration, onNoProg, routineUpdate, onSwap, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onRemoveExercise, busy }) {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
   const working = useUI(s => s.work)
@@ -626,6 +628,9 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
       {row}
     </SwipeRow>
   }
+  // Bottom right of the sets: how long the exercise took, for one done without the app (owner's call).
+  const durationBtn = <Button size="sm" icon="timer" style={{ marginInlineStart: 'auto' }} onClick={onDuration}>
+    {entry.durSec > 0 ? fmtDuration(entry.durSec) : t('Add duration')}</Button>
   return <>
     {/* Animations set to Small: a thumbnail beside the name instead of a strip above it, so the
         first set is on screen without scrolling; a tap brings the full animation back. */}
@@ -763,7 +768,11 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
         <Button size="sm" icon="sunrise" onClick={onAddWarmup}>{t('Add warm-up set')}</Button>
         <Button size="sm" icon="minus" disabled={entry.sets.length <= setSpanAt(entry.sets, entry.sets.length - 1)[1]} onClick={onRemoveSet}>{t('Remove set')}</Button>
         <Button size="sm" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>
-      </div> : <Button size="sm" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>}
+        {durationBtn}
+      </div> : <div className="row between">
+        <Button size="sm" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>
+        {durationBtn}
+      </div>}
     </div>
   </>
 }
@@ -1296,6 +1305,7 @@ function ActiveWorkout() {
     onStartTimed: (i, onFocusProgress) => startTimed(idx, i, onFocusProgress),
     onProgressionSettings: editing ? null : () => openProgressionSettings(idx),
     onRest: editing ? null : () => openExerciseRest(idx),
+    onDuration: () => openExerciseDuration(idx),
     onNoProg: routineKeepsOut(A.entries[idx]) ? null : on => setNoProg(idx, on),
     routineUpdate: routineUpdateFor(idx),
   })
@@ -1466,6 +1476,24 @@ function ActiveWorkout() {
         const e = s.active?.id === activeId ? s.active.entries?.[idx] : null
         if (!e || e.id !== entryId) return
         e.target = { ...(e.target || {}), restSec: v }
+      }),
+    })
+  }
+  // How long an exercise took, set by hand for one already done (the wheel the rest timer uses).
+  // 0:00 clears it.
+  const openExerciseDuration = idx => {
+    const state = useStore.getState().S
+    const entry = state.active?.entries?.[idx]
+    if (!entry) return
+    const activeId = state.active.id
+    const entryId = entry.id
+    durationSheet({
+      title: t('Add duration'),
+      value: entry.durSec > 0 ? entry.durSec : 0, max: DURATION_MAX,
+      onDone: v => update(s => {
+        const e = s.active?.id === activeId ? s.active.entries?.[idx] : null
+        if (!e || e.id !== entryId) return
+        if (v > 0) e.durSec = v; else delete e.durSec
       }),
     })
   }

@@ -1932,6 +1932,7 @@ export default {
   'Workout settings': 'ตั้งค่าระหว่างออกกำลังกาย',
   'Default ({0})': 'ค่าเริ่มต้น ({0})',
   'Rest for this exercise': 'เวลาพักของท่านี้',
+  'Add duration': 'เพิ่มระยะเวลา',
   'Add to this set': 'เพิ่มในเซ็ตนี้',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': 'คัดลอกเซ็ตวอร์มอัพของท่านี้ รวมถึงเวลาพักและโน้ตจากการตั้งค่าท่าออกกำลังกาย ไปยังรูทีน โน้ตที่เพิ่มไว้สำหรับวันนี้จะอยู่กับการออกกำลังกายครั้งนี้ ประวัติการออกกำลังกายของคุณจะยังอยู่ครบ',
   'Discard workout': 'ทิ้งการออกกำลังกายนี้',

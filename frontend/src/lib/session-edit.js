@@ -197,7 +197,7 @@ function draftRecord(active, current, key) {
     const merged = { ...clone(logged[i]), ...entry }
     delete merged.plan
     delete merged.carried
-    for (const k of ['note', 'notePin', 'noProg', 'muscleSnapshot', 'rid', 'planned']) if (!(k in entry)) delete merged[k]
+    for (const k of ['note', 'notePin', 'noProg', 'muscleSnapshot', 'rid', 'planned', 'durSec']) if (!(k in entry)) delete merged[k]
     return merged
   })
   const record = { ...current, ...updated, id: key, d: current.d, start: current.start, end: current.end }

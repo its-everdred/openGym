@@ -1944,6 +1944,7 @@ export default {
   'Workout settings': 'Trainings-Einstellungen',
   'Default ({0})': 'Standard ({0})',
   'Rest for this exercise': 'Pause für diese Übung',
+  'Add duration': 'Dauer hinzufügen',
   'Add to this set': 'Zu diesem Satz hinzufügen',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': 'Übernimmt die Aufwärmsätze dieser Übung sowie Pause und Notiz aus ihren Übungs-Einstellungen in die Routine. Eine Notiz für heute bleibt bei diesem Training. Dein Trainingsverlauf bleibt erhalten.',
   'Discard workout': 'Training verwerfen',

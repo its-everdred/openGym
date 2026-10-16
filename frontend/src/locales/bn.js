@@ -1966,6 +1966,7 @@ export default {
   'Workout settings': 'ওয়ার্কআউট সেটিংস',
   'Default ({0})': 'ডিফল্ট ({0})',
   'Rest for this exercise': 'এই ব্যায়ামের বিশ্রাম',
+  'Add duration': 'সময়কাল যোগ করুন',
   'Add to this set': 'এই সেটে যোগ করুন',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': 'এই ব্যায়ামের ওয়ার্ম-আপ সেট, এবং এর ব্যায়াম সেটিংসের বিশ্রাম ও নোট রুটিনে কপি করুন। আজকের জন্য যোগ করা নোট এই ওয়ার্কআউটের সাথেই থাকে। আপনার ওয়ার্কআউটের ইতিহাস থাকবে।',
   'Discard workout': 'ওয়ার্কআউট বাদ দিন',

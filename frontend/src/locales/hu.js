@@ -1924,6 +1924,7 @@ export default {
   'Workout settings': 'Edzés beállításai',
   'Default ({0})': 'Alapértelmezett ({0})',
   'Rest for this exercise': 'Pihenő ennél a gyakorlatnál',
+  'Add duration': 'Időtartam hozzáadása',
   'Add to this set': 'Hozzáadás ehhez a sorozathoz',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': 'Átmásolja a rutinba a gyakorlat bemelegítő sorozatait, valamint a pihenőt és a jegyzetet a Gyakorlat beállításaiból. A mai napra írt jegyzet ennél az edzésnél marad. Az edzéselőzményeid megmaradnak.',
   'Discard workout': 'Edzés elvetése',

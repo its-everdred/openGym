@@ -1924,6 +1924,7 @@ export default {
   'Workout settings': 'Antrenman ayarları',
   'Default ({0})': 'Varsayılan ({0})',
   'Rest for this exercise': 'Bu egzersizin dinlenmesi',
+  'Add duration': 'Süre ekle',
   'Add to this set': 'Bu sete ekle',
   'Copy this exercise’s warm-up sets, and the rest and note from its Exercise settings, into the routine. A note added for today stays with this workout. Your workout history is kept.': 'Bu egzersizin ısınma setlerini ve Egzersiz ayarlarındaki dinlenme süresi ile notu rutine kopyalar. Bugün için eklenen not bu antrenmanda kalır. Antrenman geçmişin korunur.',
   'Discard workout': 'Antrenmanı iptal et',
