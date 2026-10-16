@@ -8,6 +8,13 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { mock } from 'node:test';
+
+/* sampleState's sessions are dated July 2026 and the coach reads only the last MAX_WEEKS weeks
+ * before today, so tests built on them pin today just after them instead of expiring with the
+ * calendar. Only Date is faked; timers stay real. */
+export const FIXTURE_NOW = Date.parse('2026-07-27T12:00:00Z');
+export const pinFixtureClock = () => mock.timers.enable({ apis: ['Date'], now: FIXTURE_NOW });
 
 /* The port a spawned server.js actually bound.
  *

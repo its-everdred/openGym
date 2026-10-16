@@ -4,7 +4,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { tempData } from './helpers.mjs';
+import { tempData, pinFixtureClock } from './helpers.mjs';
+
+pinFixtureClock();
 
 tempData();
 const cfg = await import('../coach/config.js');
