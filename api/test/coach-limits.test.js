@@ -7,7 +7,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { tempData, writeState, sampleState } from './helpers.mjs';
+import { tempData, writeState, sampleState, pinFixtureClock } from './helpers.mjs';
+
+pinFixtureClock();
 
 const DIR = tempData();
 const cfg = await import('../coach/config.js');
