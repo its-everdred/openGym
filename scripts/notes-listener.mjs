@@ -75,12 +75,14 @@ async function main() {
         const { state } = await get('/api/data');
         const r = newNotes(collectNotes(state), seen);
         for (const n of r.fresh) console.log(JSON.stringify(n));
+        // Taken before saving, so a seen file that cannot be written repeats a note on the next
+        // start, not on every poll.
+        seen = r.seen;
+        lastRev = rev;
         if (r.fresh.length) {
           fs.mkdirSync(path.dirname(seenFile), { recursive: true, mode: 0o700 });
           fs.writeFileSync(seenFile, JSON.stringify(r.seen), { mode: 0o600 });
         }
-        seen = r.seen;
-        lastRev = rev;
       }
     } catch (e) {
       console.error(new Date().toISOString(), e.message);
