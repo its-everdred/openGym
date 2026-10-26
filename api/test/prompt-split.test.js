@@ -5,6 +5,11 @@ import { SCHEMAS } from '../coach/core/schemas.js';
 import { build, FULL_DETAIL_SESSIONS } from '../coach/core/payload.js';
 import { chatCompletionsSpec } from '../coach/core/adapters/openai.js';
 import { validatePlan } from '../coach/core/validate.js';
+import { pinFixtureClock } from './helpers.mjs';
+
+// The review window reaches back MAX_WEEKS from today, and the sessions below are dated August
+// 2026: pinned so they do not age out of it with the calendar.
+pinFixtureClock();
 
 const S = (workouts = []) => ({
   lang: 'en', unit: 'kg', routines: [{ id: 'r1', name: 'A', ex: [{ id: '0001', sets: 3, reps: 8 }] }],
