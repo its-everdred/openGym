@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// Watches a signed-in profile for notes written in the app and prints each new or changed one as
-// a JSON line on stdout, so whatever spawned it (an agent's monitor, a shell pipe) wakes on it.
+// Watches a signed-in profile for notes written in the app — including in a workout still running
+// on the phone — and prints each new or changed one as a JSON line on stdout, so whatever spawned
+// it (an agent's monitor, a shell pipe) wakes on it.
 //
-// Read-only: it calls GET /api/data/rev every POLL_SEC and fetches GET /api/data only when that
-// number moved. It never writes the profile. Auth is a bearer token from pairing (Settings →
-// Pair the mobile app, redeemed at POST /api/pair/redeem), read from a file so it never sits in
-// the environment or a shell history.
+// Read-only: it calls GET /api/data/rev every POLL_SEC and fetches GET /api/data and GET
+// /api/data/live only when that number moved. It never writes the profile. Auth is a bearer
+// token from pairing (Settings → Pair the mobile app, redeemed at POST /api/pair/redeem), read
+// from a file so it never sits in the environment or a shell history.
 //
 //   OPENGYM_API=https://your.instance node scripts/notes-listener.mjs
 //
@@ -22,15 +23,32 @@ import { fileURLToPath } from 'node:url';
 
 const str = v => (typeof v === 'string' ? v.trim() : '');
 
-/** Every note in a profile document: a workout's session note, a day-off note, a standing
- *  per-exercise note. Routine cues (`routines[].ex[].note`) are plan text, not the person
- *  writing, and are left out. */
-export function collectNotes(S) {
-  const out = [];
-  for (const w of Array.isArray(S?.workouts) ? S.workouts : []) {
-    const text = str(w?.note);
-    if (text && w.id) out.push({ id: 'workout:' + w.id, kind: 'workout', date: w.d || null, session: w.name || null, text });
+// A workout's session note and the notes on its exercises. The running workout (GET
+// /api/data/live) is keyed like the finished one it becomes, so a note seen mid-session is not
+// reported again when the workout is filed.
+function workoutNotes(w, out, live) {
+  if (!w?.id) return;
+  const base = { kind: 'workout', date: w.d || null, session: w.name || null, ...(live ? { live: true } : {}) };
+  const text = str(w.note);
+  if (text) out.push({ id: 'workout:' + w.id, ...base, text });
+  // One note per exercise: a session can hold the same exercise twice (two routines combined), and
+  // two notes under one key would each look new against the other on every poll.
+  const byEx = new Map();
+  for (const e of Array.isArray(w.entries) ? w.entries : []) {
+    const t = str(e?.note);
+    if (t && e.id != null) byEx.set(String(e.id), [...(byEx.get(String(e.id)) || []), t]);
   }
+  for (const [ex, texts] of byEx) out.push({ id: `workout:${w.id}:ex:${ex}`, ...base, exercise: ex, text: texts.join(' / ') });
+}
+
+/** Every note in a profile document — a workout's session note and its exercise notes, a day-off
+ *  note, a standing per-exercise note — and in the workout running on a device (`live`, from
+ *  GET /api/data/live). Routine cues (`routines[].ex[].note`, and their copies in an entry's
+ *  `target`) are plan text, not the person writing, and are left out. */
+export function collectNotes(S, live = null) {
+  const out = [];
+  for (const w of Array.isArray(S?.workouts) ? S.workouts : []) workoutNotes(w, out, false);
+  if (live && typeof live === 'object') workoutNotes(live, out, true);
   for (const [date, e] of Object.entries(S?.dayNotes || {})) {
     const text = [str(e?.tag), str(e?.text)].filter(Boolean).join(': ');
     if (text) out.push({ id: 'day:' + date, kind: 'day', date, session: null, text });
@@ -62,7 +80,7 @@ async function main() {
   const token = fs.readFileSync(tokenFile, 'utf8').trim();
   const get = async p => {
     const r = await fetch(api + p, { headers: { Authorization: 'Bearer ' + token } });
-    if (!r.ok) throw new Error(`GET ${p}: ${r.status}`);
+    if (!r.ok) throw Object.assign(new Error(`GET ${p}: ${r.status}`), { status: r.status });
     return r.json();
   };
   let seen = {};
@@ -73,7 +91,10 @@ async function main() {
       const { rev } = await get('/api/data/rev');
       if (rev !== lastRev) {
         const { state } = await get('/api/data');
-        const r = newNotes(collectNotes(state), seen);
+        // A push from the phone mid-workout moves the revision too, so this is read on the same beat.
+        // A server from before that route answers 404: notes then wait for the finished workout.
+        const { live } = await get('/api/data/live').catch(e => (e.status === 404 ? {} : Promise.reject(e)));
+        const r = newNotes(collectNotes(state, live), seen);
         for (const n of r.fresh) console.log(JSON.stringify(n));
         // Taken before saving, so a seen file that cannot be written repeats a note on the next
         // start, not on every poll.
