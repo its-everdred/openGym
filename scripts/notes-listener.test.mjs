@@ -36,3 +36,30 @@ test('a malformed or empty document yields no notes instead of throwing', () => 
   assert.deepEqual(collectNotes(null), []);
   assert.deepEqual(collectNotes({ workouts: 'x', dayNotes: null }), []);
 });
+
+test('notes on single exercises of a finished workout are the person writing too', () => {
+  const S2 = { workouts: [{ id: 'w3', d: '2026-10-26', name: 'Lower Push', entries: [{ id: '0463', note: 'make this a timer', target: { note: 'Brace' } }] }] };
+  assert.deepEqual(collectNotes(S2).map(n => [n.id, n.text]), [['workout:w3:ex:0463', 'make this a timer']]);
+});
+
+test('notes in the workout still running on the phone are reported mid-session', () => {
+  const live = { id: 'w4', d: '2026-10-27', name: 'Lower Push', note: 'stretch before cardio', entries: [{ id: '0463', note: 'timer pls', done: 1, sets: 2 }] };
+  const notes = collectNotes({ workouts: [] }, live);
+  assert.deepEqual(notes.map(n => [n.id, n.text, n.live]), [['workout:w4', 'stretch before cardio', true], ['workout:w4:ex:0463', 'timer pls', true]]);
+  assert.equal(notes[0].session, 'Lower Push');
+});
+
+test('a note seen mid-session is not reported again when that workout is finished', () => {
+  // The running workout's id is the finished workout's id, so the two share a key: the agent is
+  // not asked twice about a note it already acted on.
+  const live = { id: 'w5', name: 'Upper', note: 'curls required', entries: [] };
+  const seen = newNotes(collectNotes({ workouts: [] }, live), {}).seen;
+  const filed = { workouts: [{ id: 'w5', name: 'Upper', note: 'curls required', entries: [] }] };
+  assert.equal(newNotes(collectNotes(filed, null), seen).fresh.length, 0);
+});
+
+test('no running workout, or a malformed one, adds nothing', () => {
+  assert.deepEqual(collectNotes({ workouts: [] }, null), []);
+  assert.deepEqual(collectNotes({ workouts: [] }, { note: 'no id' }), []);
+  assert.deepEqual(collectNotes({ workouts: [] }, 'x'), []);
+});
