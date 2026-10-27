@@ -166,6 +166,22 @@ function atomicWrite(file, content, mode) { durableWrite(file, content, mode); }
 // synced more writes ago than this merges on its next pull instead of taking the server's copy.
 const WID_KEEP = 50;
 const stateFile = uid => path.join(DATA, 'state-' + uid.replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
+// The workout a device is running, as of its last push (GET /api/data/live). Kept beside the
+// profile, never in it: `active` stays device-local, so no device pulls, merges or resumes this.
+// It is what a script watching the profile needs — notes and progress — and nothing to resume from.
+const liveFile = uid => path.join(DATA, 'live-' + uid.replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
+const LIVE_STALE_MS = 12 * 3600 * 1000;
+const liveText = v => (typeof v === 'string' ? v.trim().slice(0, 2000) : '');
+function liveCopy(active, now = Date.now()) {
+  const entries = (Array.isArray(active.entries) ? active.entries : []).filter(e => e && typeof e === 'object').map(e => {
+    const sets = Array.isArray(e.sets) ? e.sets : [];
+    return { id: String(e.id ?? ''), done: sets.filter(x => x?.done).length, sets: sets.length, ...(liveText(e.note) ? { note: liveText(e.note) } : {}) };
+  });
+  return {
+    id: active.id ?? null, d: active.d ?? null, start: active.start ?? null, name: liveText(active.name) || null,
+    ...(liveText(active.note) ? { note: liveText(active.note) } : {}), entries, at: now
+  };
+}
 // When a profile last fetched its document (GET /api/data). The document's own `_ts` moves only
 // on a push, so a device that only ever read — a second phone, a profile that trains elsewhere
 // and just looks — showed "last sync never" in the admin dashboard (QA 1.3.9). Kept on the user
@@ -2192,6 +2208,18 @@ const routes = {
     json(res, 200, { rev: doc?._rev || 0, ...(doc?._wid ? { wid: doc._wid } : {}) });
   },
 
+  // The workout running on one of the profile's devices, as of that device's last push. None once
+  // the profile holds the finished workout, or after LIVE_STALE_MS without a push that carried it.
+  'GET /api/data/live': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    let live = null;
+    try { live = JSON.parse(fs.readFileSync(liveFile(user.id), 'utf8')); } catch { /* none */ }
+    if (live && (!(Date.now() - live.at < LIVE_STALE_MS) ||
+        (live.id != null && (readStateCached(user.id)?.workouts || []).some(w => w?.id === live.id)))) live = null;
+    json(res, 200, { live });
+  },
+
   'PUT /api/data': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
@@ -2239,7 +2267,13 @@ const routes = {
         (body.baseRev != null && typeof body.baseWid === 'string' && cur?._wid && body.baseWid !== cur._wid)) {
       return json(res, 409, { error: 'conflict', rev: curRev, state: forClient(cur) });
     }
-    delete body.state.active;              // in-progress workouts stay device-local
+    // In-progress workouts stay device-local; a copy of what is in one is kept beside the profile.
+    // A push without `active` leaves it alone: another device of the same person sends none.
+    if (body.state.active && typeof body.state.active === 'object' && !Array.isArray(body.state.active)) {
+      try { atomicWrite(liveFile(user.id), JSON.stringify(liveCopy(body.state.active)), 0o600); }
+      catch (e) { console.error('live copy not written for', user.id, e.message); }
+    }
+    delete body.state.active;
     // "Reset everything" stamps the profile (`resetAt`, with `resetIds`: what it wiped). The stamp
     // only moves forward: a write without it, or with an older one — a client from before it, a
     // backup restored over the profile — keeps the stored stamp. Otherwise every device that saw
@@ -2487,6 +2521,7 @@ const routes = {
     presence.delete(u.id);
     // The training history and any Coach credential of theirs, both outside db.json.
     try { fs.unlinkSync(stateFile(u.id)); } catch { /* already gone */ }
+    try { fs.unlinkSync(liveFile(u.id)); } catch { /* none */ }
     try { coachConfig.clearProfileAuth(u.id); } catch { /* nothing stored */ }
     // Their photos and videos — the one place a profile's folder under uploads/ is removed.
     try { MEDIA.removeUser(u.id); } catch (e) { console.error('media: could not remove uploads of', u.id, e.message); }

@@ -1578,6 +1578,44 @@ paths:
                   wid: { type: string, description: 'The write id (`_wid`) of the stored document; absent before its first write.' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /api/data/live:
+    get:
+      tags: [data]
+      summary: The workout running on one of the caller's devices
+      description: |
+        A copy of the in-progress workout as of the last `PUT /api/data` that carried one: its
+        notes and how many sets of each exercise are done. `active` itself is never stored in the
+        profile and no device resumes from this. `live` is null when no workout is running, once the
+        profile holds the finished workout, or 12 hours after the last push that carried it.
+      responses:
+        '200':
+          description: The running workout, or null.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  live:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: string, nullable: true }
+                      d: { type: string, nullable: true }
+                      start: { type: integer, nullable: true }
+                      name: { type: string, nullable: true }
+                      note: { type: string }
+                      at: { type: integer, description: 'When the copy was written (ms).' }
+                      entries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: string }
+                            done: { type: integer }
+                            sets: { type: integer }
+                            note: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
   /api/media/{hash}:
     parameters:
       - name: hash
