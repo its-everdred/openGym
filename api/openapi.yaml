@@ -1585,8 +1585,9 @@ paths:
       description: |
         A copy of the in-progress workout as of the last `PUT /api/data` that carried one: its
         notes and how many sets of each exercise are done. `active` itself is never stored in the
-        profile and no device resumes from this. `live` is null when no workout is running, once the
-        profile holds the finished workout, or 12 hours after the last push that carried it.
+        profile and no device resumes from this. `live` is null when none was pushed, once the
+        profile holds the finished workout, or 12 hours after the last push that carried it — so a
+        workout discarded without finishing is still served until then.
       responses:
         '200':
           description: The running workout, or null.

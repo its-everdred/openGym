@@ -4,9 +4,9 @@
 // it (an agent's monitor, a shell pipe) wakes on it.
 //
 // Read-only: it calls GET /api/data/rev every POLL_SEC and fetches GET /api/data and GET
-// /api/data/live only when that number moved. It never writes the profile. Auth is a bearer token from pairing (Settings →
-// Pair the mobile app, redeemed at POST /api/pair/redeem), read from a file so it never sits in
-// the environment or a shell history.
+// /api/data/live only when that number moved. It never writes the profile. Auth is a bearer
+// token from pairing (Settings → Pair the mobile app, redeemed at POST /api/pair/redeem), read
+// from a file so it never sits in the environment or a shell history.
 //
 //   OPENGYM_API=https://your.instance node scripts/notes-listener.mjs
 //
@@ -31,10 +31,14 @@ function workoutNotes(w, out, live) {
   const base = { kind: 'workout', date: w.d || null, session: w.name || null, ...(live ? { live: true } : {}) };
   const text = str(w.note);
   if (text) out.push({ id: 'workout:' + w.id, ...base, text });
+  // One note per exercise: a session can hold the same exercise twice (two routines combined), and
+  // two notes under one key would each look new against the other on every poll.
+  const byEx = new Map();
   for (const e of Array.isArray(w.entries) ? w.entries : []) {
     const t = str(e?.note);
-    if (t && e.id != null) out.push({ id: `workout:${w.id}:ex:${e.id}`, ...base, exercise: String(e.id), text: t });
+    if (t && e.id != null) byEx.set(String(e.id), [...(byEx.get(String(e.id)) || []), t]);
   }
+  for (const [ex, texts] of byEx) out.push({ id: `workout:${w.id}:ex:${ex}`, ...base, exercise: ex, text: texts.join(' / ') });
 }
 
 /** Every note in a profile document — a workout's session note and its exercise notes, a day-off
@@ -76,7 +80,7 @@ async function main() {
   const token = fs.readFileSync(tokenFile, 'utf8').trim();
   const get = async p => {
     const r = await fetch(api + p, { headers: { Authorization: 'Bearer ' + token } });
-    if (!r.ok) throw new Error(`GET ${p}: ${r.status}`);
+    if (!r.ok) throw Object.assign(new Error(`GET ${p}: ${r.status}`), { status: r.status });
     return r.json();
   };
   let seen = {};
@@ -89,7 +93,7 @@ async function main() {
         const { state } = await get('/api/data');
         // A push from the phone mid-workout moves the revision too, so this is read on the same beat.
         // A server from before that route answers 404: notes then wait for the finished workout.
-        const { live } = await get('/api/data/live').catch(e => (/: 404$/.test(e.message) ? {} : Promise.reject(e)));
+        const { live } = await get('/api/data/live').catch(e => (e.status === 404 ? {} : Promise.reject(e)));
         const r = newNotes(collectNotes(state, live), seen);
         for (const n of r.fresh) console.log(JSON.stringify(n));
         // Taken before saving, so a seen file that cannot be written repeats a note on the next

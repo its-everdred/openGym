@@ -90,10 +90,49 @@ test('the workout a device is running is readable mid-session, and only by its o
     assert.equal(await live(), null);
   });
 
+  await t.test('a push refused after the conflict check (400) does not move the copy', async () => {
+    // Nested deeper than JSON.stringify can walk: the server parses it, then refuses it at the
+    // write (400 'invalid state'), after the conflict check has passed.
+    const deep = '{"x":'.repeat(20000) + '{}' + '}'.repeat(20000);
+    const r = await fetch(`${base}/api/data`, { method: 'PUT', headers: h, body: JSON.stringify({ state: { workouts: [], routines: [], active: active({ id: 'w-x', note: 'refused' }), deep: '{' }, baseRev: rev }).replace('"{"', deep) });
+    assert.equal(r.status, 400);
+    assert.equal(await live(), null, 'still the filed w-live, served as none');
+  });
+
+  await t.test('re-opening a filed workout to edit it is not a session running', async () => {
+    assert.equal(await put({ workouts: [], active: active({ id: 'w-edit', editingWorkoutId: 'w-old', note: 'fixing history' }) }), 200);
+    assert.notEqual((await live())?.note, 'fixing history');
+  });
+
+  await t.test('notes are kept to a bounded length', async () => {
+    assert.equal(await put({ active: active({ id: 'w-long', note: 'x'.repeat(5000) }) }), 200);
+    assert.equal((await live()).note.length, 2000);
+  });
+
   await t.test('a copy not refreshed for 12 hours is stale', async () => {
     assert.equal(await put({ workouts: [], active: active({ id: 'w-next' }) }), 200);
     const f = path.join(dataDir, `live-${uid}.json`);
     fs.writeFileSync(f, JSON.stringify({ ...JSON.parse(fs.readFileSync(f, 'utf8')), at: Date.now() - 13 * 3600 * 1000 }));
     assert.equal(await live(), null);
   });
+});
+
+test('deleting an account removes its running-workout copy too', async t => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gym-live-del-'));
+  fs.writeFileSync(path.join(dataDir, 'secret'), SECRET, { mode: 0o600 });
+  const now = new Date().toISOString();
+  fs.writeFileSync(path.join(dataDir, 'db.json'), JSON.stringify({ users: [{ id: 'u_admin', name: 'A', created: now }, { id: uid, name: 'L', created: now }], creds: [], subs: [], invites: [] }));
+  fs.writeFileSync(path.join(dataDir, `live-${uid}.json`), JSON.stringify({ id: 'w', note: 'private', entries: [], at: Date.now() }));
+  const child = spawn(process.execPath, ['server.js'], { cwd: API, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PORT: '0', DATA_DIR: dataDir, ORIGIN: 'http://localhost:8080', RP_ID: 'localhost', ADMIN_UIDS: 'u_admin' } });
+  t.after(() => { child.kill('SIGKILL'); fs.rmSync(dataDir, { recursive: true, force: true }); });
+  let log = '';
+  child.stdout.on('data', d => { log += d; });
+  child.stderr.on('data', d => { log += d; });
+  const base = `http://127.0.0.1:${await boundPort(child, () => log)}`;
+  const p = `u_admin:${Date.now() + 86400000}:0`;
+  const adminCookie = `gymsid=${p}.${crypto.createHmac('sha256', SECRET).update(p).digest('base64url')}`;
+  const r = await fetch(`${base}/api/admin/user/delete`, { method: 'POST', headers: { cookie: adminCookie, origin: 'http://localhost:8080', 'content-type': 'application/json' }, body: JSON.stringify({ id: uid }) });
+  assert.equal(r.status, 200, await r.text());
+  // A deleted person's notes must not outlive the account on disk.
+  assert.equal(fs.existsSync(path.join(dataDir, `live-${uid}.json`)), false);
 });

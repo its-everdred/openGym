@@ -63,3 +63,14 @@ test('no running workout, or a malformed one, adds nothing', () => {
   assert.deepEqual(collectNotes({ workouts: [] }, { note: 'no id' }), []);
   assert.deepEqual(collectNotes({ workouts: [] }, 'x'), []);
 });
+
+test('the same exercise twice in one session is one note, stable across polls', () => {
+  // Two notes under one key would each look new against the other's fingerprint, and the agent
+  // would be woken by the same pair on every revision forever.
+  const live = { id: 'w6', entries: [{ id: '0294', note: 'left elbow' }, { id: '0294', note: 'lighter next time' }, { id: '0294' }] };
+  const first = newNotes(collectNotes({ workouts: [] }, live), {});
+  assert.deepEqual(first.fresh.map(n => [n.id, n.text]), [['workout:w6:ex:0294', 'left elbow / lighter next time']]);
+  assert.equal(newNotes(collectNotes({ workouts: [] }, live), first.seen).fresh.length, 0);
+  // Filed, it keeps the same key and text: no second report of what was handled mid-session.
+  assert.equal(newNotes(collectNotes({ workouts: [{ ...live }] }, null), first.seen).fresh.length, 0);
+});

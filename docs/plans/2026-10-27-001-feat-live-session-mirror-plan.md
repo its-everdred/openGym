@@ -98,7 +98,7 @@ Separately, the listener misses notes written on a single exercise during a sess
 
 ## Implementation Units
 
-- [ ] U1. **Server: keep a distilled live copy on each accepted push**
+- [x] U1. **Server: keep a distilled live copy on each accepted push**
 
 **Goal:** Write `live-<uid>.json` from `body.state.active` before it is dropped; remove it with the account.
 
@@ -125,7 +125,7 @@ Separately, the listener misses notes written on a single exercise during a sess
 
 **Verification:** new test file passes; full api suite green.
 
-- [ ] U2. **Server: `GET /api/data/live` route + OpenAPI**
+- [x] U2. **Server: `GET /api/data/live` route + OpenAPI**
 
 **Goal:** Serve the copy to its owner, applying the finished/stale rules.
 
@@ -143,7 +143,7 @@ Separately, the listener misses notes written on a single exercise during a sess
 
 **Verification:** `openapi-routes` test and `build-api-docs --check` pass.
 
-- [ ] U3. **Listener: live notes and exercise notes**
+- [x] U3. **Listener: live notes and exercise notes**
 
 **Goal:** Report notes from the live copy and from finished workouts' entries.
 

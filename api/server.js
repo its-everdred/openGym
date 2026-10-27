@@ -2267,12 +2267,11 @@ const routes = {
         (body.baseRev != null && typeof body.baseWid === 'string' && cur?._wid && body.baseWid !== cur._wid)) {
       return json(res, 409, { error: 'conflict', rev: curRev, state: forClient(cur) });
     }
-    // In-progress workouts stay device-local; a copy of what is in one is kept beside the profile.
-    // A push without `active` leaves it alone: another device of the same person sends none.
-    if (body.state.active && typeof body.state.active === 'object' && !Array.isArray(body.state.active)) {
-      try { atomicWrite(liveFile(user.id), JSON.stringify(liveCopy(body.state.active)), 0o600); }
-      catch (e) { console.error('live copy not written for', user.id, e.message); }
-    }
+    // In-progress workouts stay device-local; a copy of what is in one is kept beside the profile
+    // once the push is stored (below). A push without `active` leaves it alone: another device of
+    // the same person sends none. Re-opening a filed workout to edit it is not a session running.
+    const A = body.state.active;
+    const running = A && typeof A === 'object' && !Array.isArray(A) && A.id != null && !A.editingWorkoutId ? A : null;
     delete body.state.active;
     // "Reset everything" stamps the profile (`resetAt`, with `resetIds`: what it wiped). The stamp
     // only moves forward: a write without it, or with an older one — a client from before it, a
@@ -2308,6 +2307,10 @@ const routes = {
     try { text = JSON.stringify(body.state); }
     catch (e) { if (e instanceof RangeError) return json(res, 400, { error: 'invalid state' }); throw e; }
     atomicWrite(stateFile(user.id), text);
+    if (running) {
+      try { atomicWrite(liveFile(user.id), JSON.stringify(liveCopy(running)), 0o600); }
+      catch (e) { console.error('live copy not written for', user.id, e.message); }
+    }
     // The stat cache cannot see this write on its own: mtime granularity is 4 ms here (ext4 on
     // this kernel — 3901 of 3999 back-to-back same-size writes shared one timestamp), and a
     // `_rev` going from 7 to 8 does not change the file's size, so two writes inside one 4 ms

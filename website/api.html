@@ -1576,7 +1576,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">The workout running on one of the caller's devices</span>
   </summary>
   <div class="ep-body">
-<p>A copy of the in-progress workout as of the last <code>PUT /api/data</code> that carried one: its notes and how many sets of each exercise are done. <code>active</code> itself is never stored in the profile and no device resumes from this. <code>live</code> is null when no workout is running, once the profile holds the finished workout, or 12 hours after the last push that carried it.</p>
+<p>A copy of the in-progress workout as of the last <code>PUT /api/data</code> that carried one: its notes and how many sets of each exercise are done. <code>active</code> itself is never stored in the profile and no device resumes from this. <code>live</code> is null when none was pushed, once the profile holds the finished workout, or 12 hours after the last push that carried it — so a workout discarded without finishing is still served until then.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 
 
