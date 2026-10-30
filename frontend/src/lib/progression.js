@@ -443,6 +443,17 @@ export function stallCount(sessions, policy) {
  * startsFromLast in session-start.js).
  */
 export function nextPrescription(S, cfg, routine) {
+  // The routine's own sessions of this exercise, or the exercise's whole history when the
+  // routine has none yet (issue #216) — see sessionsFor.
+  const sessions = sessionsFor(S, cfg.id, cfg, routine?.id).filter(s => s.mode === modeOf(cfg))
+  const p = prescribe(S, cfg, routine, sessions)
+  // The load the prescription was read from (readSession's weight), so applyPrescription can
+  // keep a session's per-set weights relative to it.
+  const from = sessions[sessions.length - 1]?.weight
+  return p.weight != null && from > 0 ? { ...p, from } : p
+}
+
+function prescribe(S, cfg, routine, sessions) {
   const mode = modeOf(cfg)
   const policy = policyFor(cfg, routine, mode)
   const unit = S.unit || 'kg'
@@ -468,9 +479,6 @@ export function nextPrescription(S, cfg, routine) {
   const toppedOut = (weight, extra = {}) => ({ policy, kind: 'hold', weight, ...extra, why: ['You’ve outgrown the rack: {0} {1} is your heaviest dumbbell, so the weight stays.', weight, unit] })
 
 
-  // The routine's own sessions of this exercise, or the exercise's whole history when the
-  // routine has none yet (issue #216) — see sessionsFor.
-  const sessions = sessionsFor(S, cfg.id, cfg, routine?.id).filter(s => s.mode === mode)
   const last = sessions[sessions.length - 1]
   // Triple progression starts a cycle at the base sets and the bottom of the range, so its first
   // session does too; the weight is still the plan's.
@@ -744,35 +752,39 @@ export function nextPrescription(S, cfg, routine) {
   return { policy, kind: 'hold', weight: w, why: ['Missed reps last time. Same weight again ({0} of {1} to go).', deloadAt - stalls, deloadAt] }
 }
 
-/**
- * Apply a prescription to freshly built sets. Only the fields the policy actually decided
- * are touched, and only on sets that have not been logged yet. `floor` is the lift's bar
- * (history.js barFloor), which the re-ramped warm-ups never go under.
- */
 // Sets opened at different weights (each seeded from the same set last time, history.js
-// buildWorkSets) keep that shape: the prescribed weight is where the set progression reads lands
-// (the heaviest, or the lightest assistance — loadOf), and every other set moves by the same
-// amount. One weight on every row turned a 60/55/50 session into 60/60/60. Null when the rows
-// agree, so a straight-sets session is built exactly as before.
-function weightShift(sets, p, assisted) {
-  if (p.weight == null) return null
+// buildWorkSets) keep them: one weight on every row turned a 60/55/50 session into 60/60/60.
+// Only when the rows hold the load progression read (`p.from`) at its end — the heaviest set, or
+// the lightest assistance — so a bonus set or an unticked one cannot shift the rest. A held
+// weight keeps every set as it was; a raise moves every loaded set by the same amount, on the
+// increment's grid. A cut (a deload, a reset) and a dumbbell rack (`step` is the owned list)
+// still put the prescribed weight on every set: a lighter set cut by the same amount can land
+// under the bar, and a raised one on a bell nobody owns. Null means one weight for all.
+function weightShift(sets, p, step) {
+  if (p.weight == null || !(p.from > 0)) return null
   const ws = []
   sets.forEach(s => {
     if (s.done || isWarmupRow(s)) return
     if (isSideSet(s)) ['L', 'R'].forEach(k => { if (!s.sides[k].done) ws.push(Number(s.sides[k].w) || 0) })
     else ws.push(Number(s.w) || 0)
   })
-  if (new Set(ws).size < 2) return null
   const loaded = ws.filter(w => w > 0)
-  const ref = assisted ? Math.min(...loaded) : Math.max(...ws)
-  return ref > 0 ? p.weight - ref : null
+  if (new Set(ws).size < 2 || (Math.max(...ws) !== p.from && Math.min(...loaded) !== p.from)) return null
+  const shift = p.weight - p.from
+  return shift === 0 || (shift > 0 && !Array.isArray(step)) ? shift : null
 }
 
-export function applyPrescription(sets, p, step = 2.5, floor = 0, { assisted = false } = {}) {
+/**
+ * Apply a prescription to freshly built sets. Only the fields the policy actually decided
+ * are touched, and only on sets that have not been logged yet. `floor` is the lift's bar
+ * (history.js barFloor), which the re-ramped warm-ups never go under.
+ */
+export function applyPrescription(sets, p, step = 2.5, floor = 0, { keepShape = false } = {}) {
   // A first session has nothing to prescribe from, except triple progression's start of a cycle.
   if (!p || p.kind === 'off' || (p.kind === 'first' && !p.rowReps)) return sets
-  const shift = weightShift(sets, p, assisted)
-  const weigh = w => (shift == null ? p.weight : Math.max(0, round1((Number(w) || 0) + shift)))
+  // A set with no load keeps none; the set progression read lands exactly on the prescription.
+  const shift = keepShape ? weightShift(sets, p, step) : null
+  const weigh = w => (shift == null ? p.weight : !(w > 0) || shift === 0 ? w : w === p.from ? p.weight : addStep(w, shift, step))
   const out = sets.map(s => {
     // Never rewrite a logged set (a ticked warm-up falling through here would be the data-loss
     // the cascade fix removed, two files over). The prescription speaks to the work rows; an

@@ -135,9 +135,9 @@ describe('buildSessionEntries', () => {
   // the shape the lifter chose. Progression used to stamp one number on every row, so 60/55/50
   // came back as 60/60/60 and the lighter sets had to be typed in again every session.
   describe('keeps each set\'s own weight from last time', () => {
-    const shaped = (weights, reps, id = '0025') => ({
+    const shaped = (weights, reps, id = '0025', sets = weights.length) => ({
       unit: 'kg', exWeights: {}, routines: [],
-      workouts: [{ d: '2026-01-01', routineIds: ['r'], entries: [{ id, target: { sets: 3, reps: 10, weight: weights[0] }, sets: weights.map((w, i) => ({ w, r: reps[i], done: true })) }] }],
+      workouts: [{ d: '2026-01-01', routineIds: ['r'], entries: [{ id, target: { sets, reps: 10, weight: weights[0] }, sets: weights.map((w, i) => ({ w, r: reps[i], done: true })) }] }],
     })
     const work = entry => entry.sets.filter(s => !isWarmupRow(s))
 
@@ -169,6 +169,41 @@ describe('buildSessionEntries', () => {
       const [entry] = buildSessionEntries(shaped([30, 40], [10, 8], '0017'), { id: 'r', prog: 'linear', ex: [cfg] })
       expect(entry.plan.kind).toBe('hold')
       expect(work(entry).map(s => s.w)).toEqual([30, 40])
+    })
+
+    it('cuts every set to the deload weight: a lighter set cut by the same amount could land under the bar', () => {
+      const cfg = { id: '0025', sets: 3, reps: 10, weight: 60, prog: 'greyskull' }
+      const [entry] = buildSessionEntries(shaped([60, 40, 20], [10, 10, 5]), { id: 'r', prog: 'greyskull', ex: [cfg] })
+      expect(entry.plan.kind).toBe('deload')
+      expect(new Set(work(entry).map(s => s.w))).toEqual(new Set([entry.plan.weight]))
+    })
+
+    it('raises onto the dumbbells you own: one bell for every set rather than one nobody has', () => {
+      const cfg = { id: '0294', sets: 2, reps: 10, weight: 15, prog: 'linear' }
+      const st = { ...shaped([15, 12.5], [10, 10], '0294'), dumbbells: { kg: { weights: [10, 12.5, 15, 20, 25], _ts: 1 } } }
+      const [up] = buildSessionEntries(st, { id: 'r', prog: 'linear', ex: [cfg] })
+      expect(up.plan.weight).toBe(20)
+      expect(work(up).map(s => s.w)).toEqual([20, 20])
+      // Held, both bells are ones you own already.
+      const held = { ...shaped([15, 12.5], [10, 8], '0294'), dumbbells: st.dumbbells }
+      expect(work(buildSessionEntries(held, { id: 'r', prog: 'linear', ex: [cfg] })[0]).map(s => s.w)).toEqual([15, 12.5])
+    })
+
+    it('builds back-off sets from the prescribed top set, not from last session\'s first set', () => {
+      const cfg = { id: '0025', sets: 3, reps: 10, weight: 50, prog: 'linear', backoff: true }
+      const [entry] = buildSessionEntries(shaped([50, 55, 60], [10, 10, 8]), { id: 'r', prog: 'linear', ex: [cfg] })
+      expect(work(entry)[0].w).toBe(entry.plan.weight)
+    })
+
+    it('a set with no load keeps none, and an extra set beyond the plan does not move the rest', () => {
+      const cfg = { id: '0025', sets: 2, reps: 10, weight: 20, prog: 'linear' }
+      expect(work(buildSessionEntries(shaped([20, 0], [10, 10]), { id: 'r', prog: 'linear', ex: [cfg] })[0]).map(s => s.w)).toEqual([22.5, 0])
+      // Planned 3: an unticked 60 makes 55 the load progression reads; the done rows the session
+      // seeds from (55/50 and a bonus 70) do not end at it, so it is one weight as before.
+      const st = shaped([60, 55, 50, 70], [10, 10, 10, 10], '0025', 3)
+      st.workouts[0].entries[0].sets[0].done = false
+      const [entry] = buildSessionEntries(st, { id: 'r', prog: 'linear', ex: [{ id: '0025', sets: 3, reps: 10, weight: 60, prog: 'linear' }] })
+      expect(new Set(work(entry).map(s => s.w)).size).toBe(1)
     })
 
     it('keeps a per-side asymmetry as logged', () => {
