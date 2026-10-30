@@ -749,9 +749,30 @@ export function nextPrescription(S, cfg, routine) {
  * are touched, and only on sets that have not been logged yet. `floor` is the lift's bar
  * (history.js barFloor), which the re-ramped warm-ups never go under.
  */
-export function applyPrescription(sets, p, step = 2.5, floor = 0) {
+// Sets opened at different weights (each seeded from the same set last time, history.js
+// buildWorkSets) keep that shape: the prescribed weight is where the set progression reads lands
+// (the heaviest, or the lightest assistance — loadOf), and every other set moves by the same
+// amount. One weight on every row turned a 60/55/50 session into 60/60/60. Null when the rows
+// agree, so a straight-sets session is built exactly as before.
+function weightShift(sets, p, assisted) {
+  if (p.weight == null) return null
+  const ws = []
+  sets.forEach(s => {
+    if (s.done || isWarmupRow(s)) return
+    if (isSideSet(s)) ['L', 'R'].forEach(k => { if (!s.sides[k].done) ws.push(Number(s.sides[k].w) || 0) })
+    else ws.push(Number(s.w) || 0)
+  })
+  if (new Set(ws).size < 2) return null
+  const loaded = ws.filter(w => w > 0)
+  const ref = assisted ? Math.min(...loaded) : Math.max(...ws)
+  return ref > 0 ? p.weight - ref : null
+}
+
+export function applyPrescription(sets, p, step = 2.5, floor = 0, { assisted = false } = {}) {
   // A first session has nothing to prescribe from, except triple progression's start of a cycle.
   if (!p || p.kind === 'off' || (p.kind === 'first' && !p.rowReps)) return sets
+  const shift = weightShift(sets, p, assisted)
+  const weigh = w => (shift == null ? p.weight : Math.max(0, round1((Number(w) || 0) + shift)))
   const out = sets.map(s => {
     // Never rewrite a logged set (a ticked warm-up falling through here would be the data-loss
     // the cascade fix removed, two files over). The prescription speaks to the work rows; an
@@ -767,14 +788,14 @@ export function applyPrescription(sets, p, step = 2.5, floor = 0) {
       const sides = Object.fromEntries(['L', 'R'].map(side => {
         const row = s.sides[side]
         return [side, row.done ? row : { ...row,
-          ...(p.weight != null ? { w: p.weight } : {}),
+          ...(p.weight != null ? { w: weigh(row.w) } : {}),
           ...(p.reps != null ? { r: p.reps / 2 } : {}),
         }]
       }))
       return syncSideAggregate({ ...s, sides })
     }
     const o = { ...s }
-    if (p.weight != null) o.w = p.weight
+    if (p.weight != null) o.w = weigh(s.w)
     if (p.reps != null) o.r = p.reps
     if (p.sec != null) o.sec = p.sec
     return o

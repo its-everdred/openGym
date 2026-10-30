@@ -131,6 +131,61 @@ describe('buildSessionEntries', () => {
     expect(readSession({ ...entry, sets: entry.sets.map(s => ({ ...s, done: true })) }, cfg).ok).toBe(true)
   })
 
+  // A session trained at a different weight in each set (a top set and lighter ones after it) is
+  // the shape the lifter chose. Progression used to stamp one number on every row, so 60/55/50
+  // came back as 60/60/60 and the lighter sets had to be typed in again every session.
+  describe('keeps each set\'s own weight from last time', () => {
+    const shaped = (weights, reps, id = '0025') => ({
+      unit: 'kg', exWeights: {}, routines: [],
+      workouts: [{ d: '2026-01-01', routineIds: ['r'], entries: [{ id, target: { sets: 3, reps: 10, weight: weights[0] }, sets: weights.map((w, i) => ({ w, r: reps[i], done: true })) }] }],
+    })
+    const work = entry => entry.sets.filter(s => !isWarmupRow(s))
+
+    it('holds every set at its own weight after a missed rep', () => {
+      const cfg = { id: '0025', sets: 3, reps: 10, weight: 60, prog: 'linear' }
+      const [entry] = buildSessionEntries(shaped([60, 55, 50], [10, 10, 8]), { id: 'r', prog: 'linear', ex: [cfg] })
+      expect(entry.plan.kind).toBe('hold')
+      expect(work(entry).map(s => s.w)).toEqual([60, 55, 50])
+    })
+
+    it('moves every set by the same step when the lift progresses', () => {
+      const cfg = { id: '0025', sets: 3, reps: 10, weight: 60, prog: 'linear' }
+      const [entry] = buildSessionEntries(shaped([60, 55, 50], [10, 10, 10]), { id: 'r', prog: 'linear', ex: [cfg] })
+      expect(entry.plan.kind).toBe('up')
+      expect(work(entry).map(s => s.w)).toEqual([62.5, 57.5, 52.5])
+      // The heaviest set is still the target, so doing what is on the screen reads as a hit.
+      expect(Math.max(...work(entry).map(s => s.w))).toBe(entry.target.weight)
+      expect(readSession({ ...entry, sets: entry.sets.map(s => ({ ...s, done: true })) }, cfg).ok).toBe(true)
+    })
+
+    it('keeps the order the sets were in, whichever set was heaviest', () => {
+      const cfg = { id: '0025', sets: 3, reps: 10, weight: 50, prog: 'linear' }
+      const [entry] = buildSessionEntries(shaped([50, 55, 60], [10, 10, 8]), { id: 'r', prog: 'linear', ex: [cfg] })
+      expect(work(entry).map(s => s.w)).toEqual([50, 55, 60])
+    })
+
+    it('reads an assisted exercise from its lightest assistance, the load progression tracks', () => {
+      const cfg = { id: '0017', sets: 2, reps: 10, weight: 30, prog: 'linear' }
+      const [entry] = buildSessionEntries(shaped([30, 40], [10, 8], '0017'), { id: 'r', prog: 'linear', ex: [cfg] })
+      expect(entry.plan.kind).toBe('hold')
+      expect(work(entry).map(s => s.w)).toEqual([30, 40])
+    })
+
+    it('keeps a per-side asymmetry as logged', () => {
+      const cfg = { id: '0025', sets: 1, reps: 10, weight: 20, side: true, prog: 'linear' }
+      const side = (w, r) => ({ w, r, done: true })
+      const st = {
+        unit: 'kg', exWeights: {}, routines: [],
+        workouts: [{ d: '2026-01-01', routineIds: ['r'], entries: [{ id: '0025', target: { sets: 1, reps: 10, weight: 22.5, side: true }, sets: [
+          { w: 22.5, r: 10, done: true, sides: { L: side(22.5, 5), R: side(20, 5) } },
+        ] }] }],
+      }
+      const [entry] = buildSessionEntries(st, { id: 'r', ex: [cfg] })
+      expect(entry.plan.kind).toBe('up')
+      expect([entry.sets[0].sides.L.w, entry.sets[0].sides.R.w]).toEqual([25, 22.5])
+    })
+  })
+
   it('returns a bare array — no { entries, excluded } wrapper', () => {
     const r = { id: 'r', prog: 'off', ex: [{ id: '0025', sets: 3, reps: 5, weight: 60 }] }
     const out = buildSessionEntries(st, r)
